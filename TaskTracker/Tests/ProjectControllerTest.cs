@@ -130,6 +130,12 @@ namespace Tests
         }
         
         [Test]
+        public void ViewProjectNotFound()
+        {
+            
+        }
+        
+        [Test]
         public void EditProjectName()
         {
             // Arrange

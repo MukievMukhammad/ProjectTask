@@ -1,6 +1,9 @@
 using System.Collections.Generic;
+using System.Linq;
+using System.Net;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Query.SqlExpressions;
 using TaskTracker.ActionFilter;
 using TaskTracker.Models;
 
@@ -17,9 +20,10 @@ namespace TaskTracker.Controllers
         }
         
         [HttpGet]
-        public Project View(long id)
+        public JsonResult View(long id)
         {
-            return new Project();
+            var project = _context.Set<Project>().FirstOrDefault(p => p.Id == id);
+            return project != null ? new JsonResult(project) : new JsonResult(NotFound());
         }
 
         [HttpPost]
@@ -32,8 +36,16 @@ namespace TaskTracker.Controllers
         }
         
         [HttpPost]
+        [ValidationFilter]
         public JsonResult Edit(Project project)
         {
+            var prj = _context.Set<Project>()
+                .Include(p => p.Tasks)
+                .FirstOrDefault(p => p.Id == project.Id);
+            if (prj == null)
+                return new JsonResult(NotFound());
+            prj.Update(project);
+            _context.SaveChanges();
             return new JsonResult(Ok());
         }
         
