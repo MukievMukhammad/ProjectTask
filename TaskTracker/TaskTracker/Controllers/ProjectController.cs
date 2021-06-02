@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Query.SqlExpressions;
 using TaskTracker.ActionFilter;
 using TaskTracker.Models;
+using TaskTracker.Models.ViewModels;
 
 namespace TaskTracker.Controllers
 {
@@ -22,15 +23,25 @@ namespace TaskTracker.Controllers
         [HttpGet]
         public JsonResult View(long id)
         {
-            var project = _context.Set<Project>().FirstOrDefault(p => p.Id == id);
+            var project = _context.Set<Project>()
+                .Include(p => p.Tasks)
+                .FirstOrDefault(p => p.Id == id);
             return project != null ? new JsonResult(project) : new JsonResult(NotFound());
         }
 
         [HttpPost]
         [ValidationFilter]
-        public JsonResult Create(Project project)
+        public JsonResult Create(ProjectViewModel projectViewModel)
         {
-            _context.Set<Project>().Add(project);
+            _context.Set<Project>().Add(new Project
+            {
+                Name = projectViewModel.Name,
+                Status = projectViewModel.Status,
+                StartDate = projectViewModel.StartDate,
+                CompletionDate = projectViewModel.CompletionDate,
+                Priority = projectViewModel.Priority,
+                Tasks = projectViewModel.Tasks
+            });
             _context.SaveChanges();
             return new JsonResult(Ok());
         }
@@ -50,32 +61,39 @@ namespace TaskTracker.Controllers
         }
         
         [HttpPost]
-        public JsonResult Delete(long id)
+        public JsonResult Delete(long projectId)
         {
+            var project = _context.Set<Project>()
+                .FirstOrDefault(p => p.Id == projectId);
+            if (project == null) return new JsonResult(NotFound());
+            _context.Set<Project>().Remove(project);
+            _context.SaveChanges();
             return new JsonResult(Ok());
         }
         
         [HttpGet]
-        public IEnumerable<Task> GetTasks(long id)
+        public JsonResult GetTasks(long projectId)
         {
-            return new List<Task>();
+            var project = _context.Set<Project>()
+                .Include(p => p.Tasks)
+                .FirstOrDefault(p => p.Id == projectId);
+            return project == null ? new JsonResult(NotFound()) : new JsonResult(project.Tasks);
         }
 
         [HttpPost]
-        public JsonResult AddTask(long prjId, Task task)
+        public JsonResult AddTask(long projectId, long taskId)
         {
-            return new(Ok());
-        }
-        
-        [HttpPost]
-        public JsonResult AddTaskById(long prjId, long taskId)
-        {
-            return new(Ok());
-        }
-
-        [HttpPost]
-        public JsonResult RemoveTask(long taskId)
-        {
+            var project = _context.Set<Project>().FirstOrDefault(p => p.Id == projectId);
+            var task = _context.Set<Task>()
+                .Include(t => t.Project)
+                .FirstOrDefault(t => t.Id == taskId);
+            if (project == null || task == null)
+                return new JsonResult(NotFound());
+            if (task.Project.Id != projectId)
+            {
+                task.Project = project;
+                _context.SaveChanges();
+            }
             return new(Ok());
         }
     }

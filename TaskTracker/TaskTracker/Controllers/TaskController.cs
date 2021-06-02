@@ -1,6 +1,9 @@
+using System.Linq;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using TaskTracker.ActionFilter;
 using TaskTracker.Models;
+using TaskTracker.Models.ViewModels;
 
 namespace TaskTracker.Controllers
 {
@@ -15,27 +18,66 @@ namespace TaskTracker.Controllers
         }
 
         [HttpGet]
-        public Task View(long id)
+        public JsonResult View(long taskId)
         {
-            return new();
+            var task = _context.Set<Task>()
+                .Include(t => t.Project)
+                .FirstOrDefault(t => t.Id == taskId);
+            return task != null ? new JsonResult(task) : new JsonResult(NotFound());
         }
 
         [HttpPost]
-        public JsonResult Create(Task task)
+        [ValidationFilter]
+        public JsonResult Create(TaskViewModel taskViewModel)
         {
-            return new(Ok());
+            var project = _context.Set<Project>().FirstOrDefault(p => p.Id == taskViewModel.ProjectId);
+            if (project == null) return new JsonResult(NotFound("Project Not Found"));
+            
+            _context.Set<Task>().Add(new Task
+            {
+                Name = taskViewModel.Name,
+                Status = taskViewModel.Status,
+                Description = taskViewModel.Description,
+                Priority = taskViewModel.Priority,
+                Project = project
+            });
+            _context.SaveChanges();
+            return new JsonResult(Ok());
         }
         
         [HttpPost]
-        public JsonResult Edit(Task task)
+        [ValidationFilter]
+        public JsonResult Edit(TaskViewModelForEdit taskViewModel)
         {
-            return new(Ok());
+            var tsk = _context.Set<Task>()
+                .Include(p => p.Project)
+                .FirstOrDefault(t => t.Id == taskViewModel.Id);
+            if (tsk == null) return new JsonResult(NotFound("Task Not Found!"));
+
+            var project = _context.Set<Project>().FirstOrDefault(p => p.Id == taskViewModel.ProjectId);
+            if (project == null) 
+                return new JsonResult(NotFound("Project Not Found!"));
+            
+            tsk.Update(new Task
+            {
+                Name = taskViewModel.Name,
+                Description = taskViewModel.Description,
+                Status = taskViewModel.Status,
+                Priority = taskViewModel.Priority,
+                Project = project
+            });
+            _context.SaveChanges();
+            return new JsonResult(Ok());
         }
 
         [HttpPost]
         public JsonResult Delete(long taskId)
         {
-            throw new System.NotImplementedException();
+            var task = _context.Set<Task>().FirstOrDefault(t => t.Id == taskId);
+            if (task == null) return new JsonResult(NotFound("Task Not Found!"));
+            _context.Set<Task>().Remove(task);
+            _context.SaveChanges();
+            return new JsonResult(Ok());
         }
     }
 }

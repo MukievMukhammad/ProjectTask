@@ -23,7 +23,8 @@ namespace TaskTracker.DB
         {
             modelBuilder.Entity<Project>()
                 .HasMany(p => p.Tasks)
-                .WithOne(t => t.Project);
+                .WithOne(t => t.Project)
+                .OnDelete(DeleteBehavior.SetNull);
 
             modelBuilder.Entity<Project>()
                 .Property(p => p.Status)
