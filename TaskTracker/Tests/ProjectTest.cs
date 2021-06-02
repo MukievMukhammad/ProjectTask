@@ -24,7 +24,7 @@ namespace Tests
     {
     }
 
-    public class PrjTest
+    public class ProjectTest
     {
         private APIWebApplicationFactory _factory;
         private HttpClient _client;
@@ -158,7 +158,8 @@ namespace Tests
             var response = await SendPost("/Project/Edit", project);
 
             // Assert
-            var prj = _context.Projects.First(p => p.Id == 17);
+            var dbContext = new TaskTrackerDbContext();
+            var prj = dbContext.Projects.First(p => p.Id == 17);
             Assert.AreEqual("Another Project Name", prj.Name);
         }
         
@@ -223,6 +224,60 @@ namespace Tests
             //Assert
             Assert.AreEqual("404", 
                 JsonConvert.DeserializeObject<Dictionary<string, string>>(response)["statusCode"]);
+        }
+        
+        [Test]
+        public async Task EditProjectWithNegativePriority()
+        {
+            // Arrange
+            var project = new Project
+            {
+                Id = 17, 
+                Name = "Another Project Name",
+                Priority = -10
+            };
+            
+            // Act
+            var response = await SendPost("/Project/Edit", project);
+
+            //Assert
+            var fieldInfo = JsonConvert
+                .DeserializeObject<ICollection<JObject>>(response)
+                .First(o => o["key"].ToString() == "Priority");
+            Assert.AreEqual("Invalid", fieldInfo["validationState"].ToString());
+        }
+        
+        [Test]
+        public async Task EditProjectStatus()
+        {
+            // Arrange
+            var project = new Project
+            {
+                Id = 17, 
+                Name = "Another Project Name",
+                Status = ProjectStatus.Active
+            };
+            
+            // Act
+            var response = await SendPost("/Project/Edit", project);
+
+            //Assert
+            var dbContext = new TaskTrackerDbContext();
+            var prj = dbContext.Set<Project>().First(p => p.Id == 17);
+            Assert.AreEqual(ProjectStatus.Active, prj.Status);
+        }
+        
+        [Test]
+        public async Task DeleteProject()
+        {
+            var project = _context.Set<Project>().First(p => p.Id != 17);
+            var queryString = new FormUrlEncodedContent(
+                JsonConvert.DeserializeObject<Dictionary<string, string>>(JsonConvert.SerializeObject(new {projectId = project.Id})));
+            var result = await _client.PostAsync("/Project/Delete", queryString);
+            var response = await result.Content.ReadAsStringAsync();
+            
+            var prj = _context.Set<Project>().FirstOrDefault(p => p.Id == project.Id);
+            Assert.IsNull(prj);
         }
 
 

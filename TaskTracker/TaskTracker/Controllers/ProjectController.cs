@@ -50,10 +50,16 @@ namespace TaskTracker.Controllers
         [ValidationFilter]
         public JsonResult Edit(Project project)
         {
-            if (_context.Set<Project>().FirstOrDefault(p => p.Id == project.Id) == null)
+            try
+            {
+                _context.Set<Project>().Update(project);
+                _context.SaveChanges();
+            }
+            catch
+            {
                 return new JsonResult(NotFound());
-            _context.Set<Project>().Update(project);
-            _context.SaveChanges();
+            }
+
             return new JsonResult(Ok());
         }
         
