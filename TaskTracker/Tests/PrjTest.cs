@@ -9,6 +9,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text;
+using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using TaskTracker.DB;
@@ -37,17 +38,22 @@ namespace Tests
             _context = new TaskTrackerDbContext();
         }
 
+        private async Task<string> SendPost(string uri, ProjectViewModel project)
+        {
+            var queryString = new FormUrlEncodedContent(
+                JsonConvert.DeserializeObject<Dictionary<string, string>>(JsonConvert.SerializeObject(project)));
+            var result = await _client.PostAsync(uri, queryString);
+            return await result.Content.ReadAsStringAsync();
+        }
+
         [Test]
         public async Task CreateProject()
         {
             // Arrange
             var project = new ProjectViewModel {Name = "My Project"};
-            var queryString = new FormUrlEncodedContent(
-                JsonConvert.DeserializeObject<Dictionary<string, string>>(JsonConvert.SerializeObject(project)));
             
             // Act
-            var result = await _client.PostAsync("/Project/Create", queryString);
-            string response = await result.Content.ReadAsStringAsync();
+            var response = await SendPost("/Project/Create", project);
 
             // Assert
             Assert.AreEqual("200", 
@@ -60,12 +66,9 @@ namespace Tests
         {
             // Arrange
             var project = new ProjectViewModel();
-            var queryString = new FormUrlEncodedContent(
-                JsonConvert.DeserializeObject<Dictionary<string, string>>(JsonConvert.SerializeObject(project)));
             
             // Act
-            var result = await _client.PostAsync("/Project/Create", queryString);
-            var response = await result.Content.ReadAsStringAsync();
+            var response = await SendPost("/Project/Create", project);
             
             // Assert
             var fieldInfo = JsonConvert
@@ -84,12 +87,29 @@ namespace Tests
                 StartDate = new DateTime(2021, 3, 3), 
                 CompletionDate = new DateTime(2020, 2, 3)
             };
-            var queryString = new FormUrlEncodedContent(
-                JsonConvert.DeserializeObject<Dictionary<string, string>>(JsonConvert.SerializeObject(project)));
             
             // Act
-            var result = await _client.PostAsync("/Project/Create", queryString);
-            var response = await result.Content.ReadAsStringAsync();
+            var response = await SendPost("/Project/Create", project);
+            
+            // Assert
+            var fieldInfo = JsonConvert
+                .DeserializeObject<ICollection<JObject>>(response)
+                .First(o => o["key"].ToString() == "CompletionDate");
+            Assert.AreEqual("Invalid", fieldInfo["validationState"].ToString());
+        }
+        
+        [Test]
+        public async Task CreateProjectWithNegativePriority()
+        {
+            // Arrange
+            var project = new ProjectViewModel
+            {
+                Name = "My Project", 
+                Priority = -10
+            };
+            
+            // Act
+            var response = await SendPost("/Project/Create", project);
             
             // Assert
             var fieldInfo = JsonConvert
