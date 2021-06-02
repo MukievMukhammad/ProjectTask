@@ -5,10 +5,10 @@ EXPOSE 443
 
 FROM mcr.microsoft.com/dotnet/sdk:5.0 AS build
 WORKDIR /src
-COPY ["TaskTracker.csproj", ""]
+COPY ["TaskTracker.csproj", "TaskTracker/"]
 RUN dotnet restore "TaskTracker.csproj"
 COPY . .
-WORKDIR "/src"
+WORKDIR "/src/TaskTracker"
 RUN dotnet build "TaskTracker.csproj" -c Release -o /app/build
 
 FROM build AS publish

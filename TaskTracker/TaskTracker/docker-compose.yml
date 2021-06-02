@@ -1,0 +1,27 @@
+version: '3.4'
+services:
+  tasktracker:
+    image: tasktracker:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:80"
+    depends_on:
+      - database
+    environment:
+      DB_CONNECTION_STRING: "Host=database;Port=5432;Database=postgres;Username=postgres;Password=postgres"
+  database:
+    container_name: database
+    image: postgres:latest
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "postgres"
+      POSTGRES_DB: "postgres"
+    volumes:
+      - db_volume:/var/lib/postgresql/data
+      - ./dbscripts/seed.sql :/docker-entrypoint-initdb.d/seed.sql
+volumes: 
+  db_volume:
